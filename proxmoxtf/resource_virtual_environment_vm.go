@@ -94,6 +94,13 @@ const (
 	dvResourceVirtualEnvironmentVMOperatingSystemType               = "other"
 	dvResourceVirtualEnvironmentVMPoolID                            = ""
 	dvResourceVirtualEnvironmentVMSerialDeviceDevice                = "socket"
+	dvResourceVirtualEnvironmentVMSMBIOSFamily                      = ""
+	dvResourceVirtualEnvironmentVMSMBIOSManufactur                  = ""
+	dvResourceVirtualEnvironmentVMSMBIOSProduct                     = ""
+	dvResourceVirtualEnvironmentVMSMBIOSSKU                         = ""
+	dvResourceVirtualEnvironmentVMSMBIOSSerial                      = ""
+	dvResourceVirtualEnvironmentVMSMBIOSUUID                        = ""
+	dvResourceVirtualEnvironmentVMSMBIOSVersion                     = ""
 	dvResourceVirtualEnvironmentVMStarted                           = true
 	dvResourceVirtualEnvironmentVMTabletDevice                      = true
 	dvResourceVirtualEnvironmentVMTemplate                          = false
@@ -211,6 +218,14 @@ const (
 	mkResourceVirtualEnvironmentVMPoolID                            = "pool_id"
 	mkResourceVirtualEnvironmentVMSerialDevice                      = "serial_device"
 	mkResourceVirtualEnvironmentVMSerialDeviceDevice                = "device"
+	mkResourceVirtualEnvironmentVMSMBIOS                            = "smbios"
+	mkResourceVirtualEnvironmentVMSMBIOSFamily                      = "family"
+	mkResourceVirtualEnvironmentVMSMBIOSManufactur                  = "manufactur"
+	mkResourceVirtualEnvironmentVMSMBIOSProduct                     = "product"
+	mkResourceVirtualEnvironmentVMSMBIOSSKU                         = "sku"
+	mkResourceVirtualEnvironmentVMSMBIOSSerial                      = "serial"
+	mkResourceVirtualEnvironmentVMSMBIOSUUID                        = "uuid"
+	mkResourceVirtualEnvironmentVMSMBIOSVersion                     = "version"
 	mkResourceVirtualEnvironmentVMStarted                           = "started"
 	mkResourceVirtualEnvironmentVMTabletDevice                      = "tablet_device"
 	mkResourceVirtualEnvironmentVMTags                              = "tags"
@@ -1082,6 +1097,72 @@ func resourceVirtualEnvironmentVM() *schema.Resource {
 				MaxItems: maxResourceVirtualEnvironmentVMSerialDevices,
 				MinItems: 0,
 			},
+			mkResourceVirtualEnvironmentVMSMBIOS: {
+				Type:        schema.TypeList,
+				Description: "The SMBIOS1 configuration",
+				Optional:    true,
+				DefaultFunc: func() (interface{}, error) {
+					return []interface{}{
+						map[string]interface{}{
+							mkResourceVirtualEnvironmentVMSMBIOSFamily:     dvResourceVirtualEnvironmentVMSMBIOSFamily,
+							mkResourceVirtualEnvironmentVMSMBIOSManufactur: dvResourceVirtualEnvironmentVMSMBIOSManufactur,
+							mkResourceVirtualEnvironmentVMSMBIOSProduct:    dvResourceVirtualEnvironmentVMSMBIOSProduct,
+							mkResourceVirtualEnvironmentVMSMBIOSSerial:     dvResourceVirtualEnvironmentVMSMBIOSSerial,
+							mkResourceVirtualEnvironmentVMSMBIOSSKU:        dvResourceVirtualEnvironmentVMSMBIOSSKU,
+							mkResourceVirtualEnvironmentVMSMBIOSUUID:       dvResourceVirtualEnvironmentVMSMBIOSUUID,
+							mkResourceVirtualEnvironmentVMSMBIOSVersion:    dvResourceVirtualEnvironmentVMSMBIOSVersion,
+						},
+					}, nil
+				},
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						mkResourceVirtualEnvironmentVMSMBIOSFamily: {
+							Type:        schema.TypeString,
+							Description: "The SMBIOS1 family string",
+							Optional:    true,
+							Default:     dvResourceVirtualEnvironmentVMSMBIOSFamily,
+						},
+						mkResourceVirtualEnvironmentVMSMBIOSManufactur: {
+							Type:        schema.TypeString,
+							Description: "The SMBIOS1 manufacturer",
+							Optional:    true,
+							Default:     dvResourceVirtualEnvironmentVMSMBIOSManufactur,
+						},
+						mkResourceVirtualEnvironmentVMSMBIOSProduct: {
+							Type:        schema.TypeString,
+							Description: "The SMBIOS1 product ID",
+							Optional:    true,
+							Default:     dvResourceVirtualEnvironmentVMSMBIOSProduct,
+						},
+						mkResourceVirtualEnvironmentVMSMBIOSSerial: {
+							Type:        schema.TypeString,
+							Description: "The SMBIOS1 serial number",
+							Optional:    true,
+							Default:     dvResourceVirtualEnvironmentVMSMBIOSSerial,
+						},
+						mkResourceVirtualEnvironmentVMSMBIOSSKU: {
+							Type:        schema.TypeString,
+							Description: "The SMBIOS1 SKU string",
+							Optional:    true,
+							Default:     dvResourceVirtualEnvironmentVMSMBIOSSKU,
+						},
+						mkResourceVirtualEnvironmentVMSMBIOSUUID: {
+							Type:        schema.TypeString,
+							Description: "The SMBIOS1 UUID",
+							Optional:    true,
+							Default:     dvResourceVirtualEnvironmentVMSMBIOSUUID,
+						},
+						mkResourceVirtualEnvironmentVMSMBIOSVersion: {
+							Type:        schema.TypeString,
+							Description: "The SMBIOS1 version",
+							Optional:    true,
+							Default:     dvResourceVirtualEnvironmentVMSMBIOSVersion,
+						},
+					},
+				},
+				MaxItems: 7,
+				MinItems: 0,
+			},
 			mkResourceVirtualEnvironmentVMStarted: {
 				Type:        schema.TypeBool,
 				Description: "Whether to start the virtual machine",
@@ -1402,6 +1483,7 @@ func resourceVirtualEnvironmentVMCreateClone(
 	networkDevice := d.Get(mkResourceVirtualEnvironmentVMNetworkDevice).([]interface{})
 	operatingSystem := d.Get(mkResourceVirtualEnvironmentVMOperatingSystem).([]interface{})
 	serialDevice := d.Get(mkResourceVirtualEnvironmentVMSerialDevice).([]interface{})
+	smbios := d.Get(mkResourceVirtualEnvironmentVMSMBIOS).([]interface{})
 	onBoot := proxmox.CustomBool(d.Get(mkResourceVirtualEnvironmentVMOnBoot).(bool))
 	tabletDevice := proxmox.CustomBool(d.Get(mkResourceVirtualEnvironmentVMTabletDevice).(bool))
 	template := proxmox.CustomBool(d.Get(mkResourceVirtualEnvironmentVMTemplate).(bool))
@@ -1602,6 +1684,28 @@ func resourceVirtualEnvironmentVMCreateClone(
 
 		for i := len(updateBody.SerialDevices); i < maxResourceVirtualEnvironmentVMSerialDevices; i++ {
 			del = append(del, fmt.Sprintf("serial%d", i))
+		}
+	}
+
+	if len(smbios) > 0 {
+		smbiosBlock := smbios[0].(map[string]interface{})
+
+		family := smbiosBlock[mkResourceVirtualEnvironmentVMSMBIOSFamily].(string)
+		manufacturer := smbiosBlock[mkResourceVirtualEnvironmentVMSMBIOSManufactur].(string)
+		product := smbiosBlock[mkResourceVirtualEnvironmentVMSMBIOSProduct].(string)
+		sku := smbiosBlock[mkResourceVirtualEnvironmentVMSMBIOSSKU].(string)
+		serial := smbiosBlock[mkResourceVirtualEnvironmentVMSMBIOSSerial].(string)
+		uuid := smbiosBlock[mkResourceVirtualEnvironmentVMSMBIOSUUID].(string)
+		version := smbiosBlock[mkResourceVirtualEnvironmentVMSMBIOSVersion].(string)
+
+		updateBody.SMBIOS = &proxmox.CustomSMBIOS{
+			Family:       &family,
+			Manufacturer: &manufacturer,
+			Product:      &product,
+			SKU:          &sku,
+			Serial:       &serial,
+			UUID:         &uuid,
+			Version:      &version,
 		}
 	}
 
@@ -1894,6 +1998,25 @@ func resourceVirtualEnvironmentVMCreateCustom(
 
 	serialDevices := resourceVirtualEnvironmentVMGetSerialDeviceList(d)
 
+	smbiosBlock, err := getSchemaBlock(
+		resource,
+		d,
+		[]string{mkResourceVirtualEnvironmentVMSMBIOS},
+		0,
+		true,
+	)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	// family := smbiosBlock[mkResourceVirtualEnvironmentVMSMBIOSFamily].(string)
+	// manufacturer := smbiosBlock[mkResourceVirtualEnvironmentVMSMBIOSManufactur].(string)
+	// product := smbiosBlock[mkResourceVirtualEnvironmentVMSMBIOSProduct].(string)
+	// sku := smbiosBlock[mkResourceVirtualEnvironmentVMSMBIOSSKU].(string)
+	// serial := smbiosBlock[mkResourceVirtualEnvironmentVMSMBIOSSerial].(string)
+	uuid := smbiosBlock[mkResourceVirtualEnvironmentVMSMBIOSUUID].(string)
+	// version := smbiosBlock[mkResourceVirtualEnvironmentVMSMBIOSVersion].(string)
+
 	onBoot := proxmox.CustomBool(d.Get(mkResourceVirtualEnvironmentVMOnBoot).(bool))
 	tabletDevice := proxmox.CustomBool(d.Get(mkResourceVirtualEnvironmentVMTabletDevice).(bool))
 	template := proxmox.CustomBool(d.Get(mkResourceVirtualEnvironmentVMTemplate).(bool))
@@ -1917,7 +2040,7 @@ func resourceVirtualEnvironmentVMCreateCustom(
 	var memorySharedObject *proxmox.CustomSharedMemory
 
 	bootDisk := "scsi0"
-	bootOrder := "c"
+	bootOrder := "cn"
 
 	if cdromEnabled {
 		bootOrder = "cd"
@@ -1970,18 +2093,27 @@ func resourceVirtualEnvironmentVMCreateCustom(
 			Flags: &cpuFlagsConverted,
 			Type:  cpuType,
 		},
-		CPUSockets:          &cpuSockets,
-		CPUUnits:            &cpuUnits,
-		DedicatedMemory:     &memoryDedicated,
-		FloatingMemory:      &memoryFloating,
-		IDEDevices:          ideDevices,
-		KeyboardLayout:      &keyboardLayout,
-		NetworkDevices:      networkDeviceObjects,
-		OSType:              &operatingSystemType,
-		PCIDevices:          pciDeviceObjects,
-		SCSIHardware:        &scsiHardware,
-		SerialDevices:       serialDevices,
-		SharedMemory:        memorySharedObject,
+		CPUSockets:      &cpuSockets,
+		CPUUnits:        &cpuUnits,
+		DedicatedMemory: &memoryDedicated,
+		FloatingMemory:  &memoryFloating,
+		IDEDevices:      ideDevices,
+		KeyboardLayout:  &keyboardLayout,
+		NetworkDevices:  networkDeviceObjects,
+		OSType:          &operatingSystemType,
+		PCIDevices:      pciDeviceObjects,
+		SCSIHardware:    &scsiHardware,
+		SerialDevices:   serialDevices,
+		SharedMemory:    memorySharedObject,
+		SMBIOS: &proxmox.CustomSMBIOS{
+			// Family:       &family,
+			// Manufacturer: &manufacturer,
+			// Product:      &product,
+			// SKU:          &sku,
+			// Serial:       &serial,
+			UUID: &uuid,
+			// Version:      &version,
+		},
 		StartOnBoot:         &onBoot,
 		TabletDeviceEnabled: &tabletDevice,
 		Template:            &template,
@@ -3598,6 +3730,52 @@ func resourceVirtualEnvironmentVMReadCustom(
 		diags = append(diags, diag.FromErr(err)...)
 	}
 
+	// Compare the smbios configuration to the one stored in the state.
+	smbios := map[string]interface{}{}
+	if vmConfig.SMBIOS != nil {
+		if vmConfig.SMBIOS.Family != nil {
+			smbios[mkResourceVirtualEnvironmentVMSMBIOSFamily] = *vmConfig.SMBIOS.Family
+		} else {
+			smbios[mkResourceVirtualEnvironmentVMSMBIOSFamily] = ""
+		}
+
+		if vmConfig.SMBIOS.Manufacturer != nil {
+			smbios[mkResourceVirtualEnvironmentVMSMBIOSManufactur] = *vmConfig.SMBIOS.Manufacturer
+		} else {
+			smbios[mkResourceVirtualEnvironmentVMSMBIOSManufactur] = ""
+		}
+
+		if vmConfig.SMBIOS.Product != nil {
+			smbios[mkResourceVirtualEnvironmentVMSMBIOSProduct] = *vmConfig.SMBIOS.Product
+		} else {
+			smbios[mkResourceVirtualEnvironmentVMSMBIOSProduct] = ""
+		}
+
+		if vmConfig.SMBIOS.SKU != nil {
+			smbios[mkResourceVirtualEnvironmentVMSMBIOSSKU] = *vmConfig.SMBIOS.SKU
+		} else {
+			smbios[mkResourceVirtualEnvironmentVMSMBIOSSKU] = ""
+		}
+
+		if vmConfig.SMBIOS.Serial != nil {
+			smbios[mkResourceVirtualEnvironmentVMSMBIOSSerial] = *vmConfig.SMBIOS.Serial
+		} else {
+			smbios[mkResourceVirtualEnvironmentVMSMBIOSSerial] = ""
+		}
+
+		if vmConfig.SMBIOS.UUID != nil {
+			smbios[mkResourceVirtualEnvironmentVMSMBIOSUUID] = *vmConfig.SMBIOS.UUID
+		} else {
+			smbios[mkResourceVirtualEnvironmentVMSMBIOSUUID] = ""
+		}
+
+		if vmConfig.SMBIOS.Version != nil {
+			smbios[mkResourceVirtualEnvironmentVMSMBIOSVersion] = *vmConfig.SMBIOS.Version
+		} else {
+			smbios[mkResourceVirtualEnvironmentVMSMBIOSVersion] = ""
+		}
+	}
+
 	// Compare the VGA configuration to the one stored in the state.
 	vga := map[string]interface{}{}
 
@@ -4322,6 +4500,40 @@ func resourceVirtualEnvironmentVMUpdate(
 		}
 
 		rebootRequired = true
+	}
+
+	// Prepare the new smbios configuration.
+	if d.HasChange(mkResourceVirtualEnvironmentVMSMBIOS) {
+		smbiosBlock, err := getSchemaBlock(
+			resource,
+			d,
+			[]string{mkResourceVirtualEnvironmentVMSMBIOS},
+			0,
+			true,
+		)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		family := smbiosBlock[mkResourceVirtualEnvironmentVMSMBIOSFamily].(string)
+		manufacturer := smbiosBlock[mkResourceVirtualEnvironmentVMSMBIOSManufactur].(string)
+		product := smbiosBlock[mkResourceVirtualEnvironmentVMSMBIOSProduct].(string)
+		sku := smbiosBlock[mkResourceVirtualEnvironmentVMSMBIOSSKU].(string)
+		serial := smbiosBlock[mkResourceVirtualEnvironmentVMSMBIOSSerial].(string)
+		uuid := smbiosBlock[mkResourceVirtualEnvironmentVMSMBIOSUUID].(string)
+		version := smbiosBlock[mkResourceVirtualEnvironmentVMSMBIOSVersion].(string)
+
+		updateBody.SMBIOS = &proxmox.CustomSMBIOS{
+			Family:       &family,
+			Manufacturer: &manufacturer,
+			Product:      &product,
+			SKU:          &sku,
+			Serial:       &serial,
+			UUID:         &uuid,
+			Version:      &version,
+		}
+
+		rebootRequired = false
 	}
 
 	// Prepare the new VGA configuration.
