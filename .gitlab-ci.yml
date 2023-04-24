@@ -1,0 +1,37 @@
+image:
+  name: golang:bullseye
+
+variables:
+  LINUX_AMD64_BINARY: terraform-provider-proxmox
+  VERSION: v0.15.0
+  
+
+stages:
+  - build
+  - upload
+  - release
+
+build:
+  stage: build
+  script:
+    # - "git config --global url.\"https://$GITLAB_TERRAFORM_USER:$GITLAB_TERRAFORM_TOKEN@gitlab.akra.de\".insteadOf https://gitlab.akra.de"
+    - "make clean"
+    - "make build"
+  artifacts:
+    paths:
+      - build/${LINUX_AMD64_BINARY}_${VERSION}
+
+upload:
+  stage: upload
+  image: curlimages/curl:latest
+  script:
+    - |
+      curl --header "JOB-TOKEN: ${CI_JOB_TOKEN}" --upload-file build/${LINUX_AMD64_BINARY}_${VERSION} ${PACKAGE_REGISTRY_URL}/${VERSION}/${LINUX_AMD64_BINARY}_${VERSION}
+
+release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  script:
+    - |
+      release-cli create --name "$VERSION" --tag-name $VERSION \
+        --assets-link "{\"name\":\"${LINUX_AMD64_BINARY}_${VERSION}\",\"url\":\"${PACKAGE_REGISTRY_URL}/${VERSION}/${LINUX_AMD64_BINARY}_${VERSION}\"}"
